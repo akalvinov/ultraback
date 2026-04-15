@@ -1,0 +1,14 @@
+namespace: ultra-dev
+
+ingress:
+  enabled: true
+  annotations: {}
+  hosts:
+    - host: ultraback.k8.lab.kalvinov.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: 
+    - secretName: app-tls
+      hosts:
+        - ultraback.k8.lab.kalvinov.com
