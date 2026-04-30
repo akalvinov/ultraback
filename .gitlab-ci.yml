@@ -1,0 +1,57 @@
+---
+include:
+  - project: 'tools/templates'
+    ref: main
+    file: docker-build.yaml
+  - project: 'tools/templates'
+    ref: main
+    file: helm-deploy.yaml
+
+variables:
+  DOCKER_BUILD_IMAGE: ultraback
+  DOCKERFILE_PATH: Dockerfile
+
+stages:          # List of stages for jobs, and their order of execution
+  - build
+  - build-docker
+  - deploy
+
+build_gradle:
+  image: git.lab.kalvinov.com:5050/tools/dockersync/eclipse-temurin:21
+  stage: build
+  script:
+    - ./gradlew build
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ "/feature-*/"'  #feature branches
+      when: on_success
+  artifacts:
+    paths:
+      - "build/libs/app.jar"
+
+build_docker:
+  stage: build-docker
+  extends:
+    - .docker_build_job
+  allow_failure: false
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ "/feature-*/"'  #feature branches
+      when: on_success
+      variables:
+        DOCKER_BUILD_IMAGE: "git.lab.kalvinov.com:5050/helloworld/ultraback"
+        DOCKER_TAG: $CI_COMMIT_BRANCH
+
+deploy:
+  extends:
+    - .helm_deploy
+    - .kubernetes_auth
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ "/feature-*/"'  #feature branches
+      when: on_success
+      variables:
+        HELM_CHART_DIR: helm
+        IMAGE_TAG: $CI_COMMIT_BRANCH
+        RELEASE_NAME: ultraback
+        NAMESPACE: ultra-dev
+        APP_VALUES_FILE: helm/values-dev.yaml
+        PRIVATE_VALUES_FILE: ${PRIVATE_ULTRABACK_DEV}
+        KUBECONFIG_FILE: ${KUBECONFIG_LOCAL}
